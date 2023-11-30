@@ -219,9 +219,6 @@ def main():
     wave = Grid(width, height, rez, options)
     wave.initiate()
 
-    # toggle for displaying debug information
-    hover_toggle = False
-
     # game loop
     loop = True
     while loop:
