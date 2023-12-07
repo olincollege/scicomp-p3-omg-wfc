@@ -67,6 +67,7 @@ class Grid:
         print("reset")
 
     def heuristic_pick(self):
+        print("heuristic pick")
         grid_copy = [i for row in self.grid for i in row]
         grid_copy.sort(key=lambda x: x.entropy())
 
@@ -95,9 +96,9 @@ class Grid:
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
-        time.sleep(1)
-        print("next")
+        time.sleep(.05)
         self.grid[i][j].draw(self.win)
+        pygame.display.flip()
         pre_options = self.grid[i][j].options
         cumulative_valid_options = pre_options
 
