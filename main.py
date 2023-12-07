@@ -16,9 +16,6 @@ class Cell:
     def entropy(self):
         return len(self.options)
 
-    def update(self):
-        self.collapsed = self.entropy() == 1
-
     def observe(self):
         try:
             self.options = [random.choice(self.options)]
@@ -53,7 +50,8 @@ class Tile:
 
 
 class Grid:
-    def __init__(self, width, height, tile_size, options):
+    def __init__(self, win, width, height, tile_size, options):
+        self.win = win
         self.width = width
         self.height = height
         self.tile_size = tile_size
@@ -62,6 +60,11 @@ class Grid:
         self.grid = [[Cell(i, j, tile_size, options)
                       for j in range(self.h)] for i in range(self.w)]
         self.options = options
+        self.invalid = False
+
+    def reset(self):
+        self.grid = [[Cell(i, j, tile_size, self.options)
+                      for j in range(self.h)] for i in range(self.w)]
         self.invalid = False
 
     def heuristic_pick(self):
@@ -79,11 +82,6 @@ class Grid:
         pick = random.choice(filtered_grid)
         return pick
 
-    # def check_validity(self):
-    #     grid_copy = [i for row in self.grid for i in row]
-    #     for cell in grid_copy:
-    #         if cell.entropy() < 1 and cell
-
     def collapse(self):
         pick = self.heuristic_pick()
         if pick:
@@ -91,36 +89,45 @@ class Grid:
         else:
             return
 
-        next_grid = copy.copy(self.grid)
+        self.propagate(pick.x, pick.y)
 
-        for i in range(len(self.grid)):
-            for j in range(len(self.grid[0])):
-                if self.grid[i][j].collapsed:
-                    next_grid[i][j] = self.grid[i][j]
-                else:
-                    self.compute_cumulative_valid_options(next_grid, i, j)
+    def propagate(self, i, j):
+        pre_options = self.grid[i][j].options
+        cumulative_valid_options = pre_options
 
-        self.grid = copy.copy(next_grid)
-
-    def compute_cumulative_valid_options(self, next_grid, i, j):
-        cumulative_valid_options = self.options
+        if len(pre_options) == 1:
+            self.propagate_neighbor((i - 1, j))
+            self.propagate_neighbor((i, j + 1))
+            self.propagate_neighbor((i + 1, j))
+            self.propagate_neighbor((i, j - 1))
 
         def check_neighbor_cell(cell, direction):
             neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
-            if len(neighbor.options) > 0:
-                valid_options = getattr(neighbor.options[0], direction, [])
-                return [option for option in cumulative_valid_options if option in valid_options]
-            else:
-                self.invalid = True
-                return
+            valid_options = getattr(neighbor.options[0], direction, [])
+            return [option for option in cumulative_valid_options if option in valid_options]
 
         cumulative_valid_options = check_neighbor_cell((i - 1, j), "down")
         cumulative_valid_options = check_neighbor_cell((i, j + 1), "left")
         cumulative_valid_options = check_neighbor_cell((i + 1, j), "up")
         cumulative_valid_options = check_neighbor_cell((i, j - 1), "right")
 
-        next_grid[i][j].options = cumulative_valid_options
-        next_grid[i][j].update()
+        if cumulative_valid_options:
+            self.grid[i][j].options = cumulative_valid_options
+            if len(cumulative_valid_options) == 1:
+                self.grid[i][j].collapsed = True
+            if pre_options != cumulative_valid_options:
+                self.grid[i][j].draw(self.win)
+                self.propagate_neighbor((i - 1, j))
+                self.propagate_neighbor((i, j + 1))
+                self.propagate_neighbor((i + 1, j))
+                self.propagate_neighbor((i, j - 1))
+        else:
+            self.invalid = True
+
+    def propagate_neighbor(self, cell):
+        neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
+        if not neighbor.collapsed:
+            self.propagate(cell[0] % self.w, cell[1] % self.h)
 
     def draw(self, win):
         for row in self.grid:
@@ -158,11 +165,11 @@ def main():
         tile.index = i
         tile.set_rules(options)
 
-    wave = Grid(width, height, tile_size, options)
+    wave = Grid(display, width, height, tile_size, options)
+    display.fill((0, 0, 0))
 
     loop = True
     while loop:
-        display.fill((0, 0, 0))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -171,8 +178,9 @@ def main():
                 if event.key == pygame.K_q:
                     loop = False
 
-        wave.draw(display)
         wave.collapse()
+        if wave.invalid:
+            wave.reset()
         pygame.display.flip()
 
 
