@@ -246,16 +246,19 @@ def main():
     options = [
         Tile(load_image(f"./imgs/{i}.png", tile_size)) for i in range(5)]
 
+    # Set all edge rules
     options[0].edges = [0, 0, 0, 0]
     options[1].edges = [1, 1, 0, 1]
     options[2].edges = [1, 1, 1, 0]
     options[3].edges = [0, 1, 1, 1]
     options[4].edges = [1, 0, 1, 1]
 
+    # Convert all edge rules to adjacency rules
     for i, tile in enumerate(options):
         tile.index = i
         tile.set_rules(options)
 
+    # Initialize grid and cells within
     wave = Grid(display, width, height, tile_size, options)
     wave.empty()
 
