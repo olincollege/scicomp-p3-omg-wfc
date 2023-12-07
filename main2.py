@@ -16,11 +16,10 @@ class Cell:
         self.collapsed = False
 
     def draw(self, win):
-        if len(self.options) != 5:
-            for i in range(len(self.options)):
-                self.options[i].img.set_alpha(255//len(self.options))
-                win.blit(self.options[i].img, (self.y *
-                                               self.rez, self.x * self.rez))
+        for i in range(len(self.options)):
+            self.options[i].img.set_alpha(255//len(self.options))
+            win.blit(self.options[i].img, (self.y *
+                                           self.rez, self.x * self.rez))
 
     # return the entropy/the length of options
     def entropy(self):
@@ -177,8 +176,8 @@ class Grid:
                         option for option in cumulative_valid_options if option in valid_options]
 
                     # finally assign the cumulative_valid_options options to be the current cells valid options
-                    if len(cumulative_valid_options) == 0:
-                        self.reset()
+                    # if len(cumulative_valid_options) == 0:
+                    #     self.reset()
                     next_grid[i][j].options = cumulative_valid_options
                     next_grid[i][j].update()
 
@@ -231,7 +230,6 @@ def main():
     loop = True
     while loop:
         time.sleep(.05)
-        display.fill((0, 0, 0))
         # event handler
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

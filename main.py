@@ -96,7 +96,7 @@ class Grid:
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
-        time.sleep(.05)
+        time.sleep(.01)
         self.grid[i][j].draw(self.win)
         pygame.display.flip()
         pre_options = self.grid[i][j].options
