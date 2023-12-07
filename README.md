@@ -24,7 +24,7 @@ Then clone this repo:
 
 ### Run
 
-This project contains two main python files, and the one that should be run in order to view the simulation that I worked on is **own_attempt_wfc.py**. After being run, a pygame window should pop up on your machine, and the model will be run. It can be closed by pressing the Esc or Q keys while the model is running, or by closing out of the window. Thw window will not automatically close when the model is finished, and will instead display the finished image.
+This project contains one main python file, and it's fairly straightforward to use the model by running **own_attempt_wfc.py**. After being run, a pygame window should pop up on your machine, and the model will be run. It can be closed by pressing the Esc or Q keys while the model is running, or by closing out of the window. Thw window will not automatically close when the model is finished, and will instead display the finished image.
 
 ## Simulation
 
