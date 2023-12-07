@@ -30,82 +30,50 @@ This project contains two main python files, and the one that should be run in o
 
 ### Premise
 
-This simulation is intended to represent the modeling of cold traps on Mercury, and the movement of H2O molecules across its surface, specifically with reference to how those molecules either:
+In this project, I decided to take advantage of the class time and pursue a project I've been wanting to look at for a while: the Wave Function Collapse algorithm. First developed in 2016, WFC was created by Maxim Gumin as a way to "generate bitmaps that are locally similar to the input bitmap". It has use in game design and art, with these and many more examples shown on the [original repository](https://ieeexplore.ieee.org/document/9421370).
 
-- Get photodissociated by the sun or atmospheric conditions
-- Become trapped in the polar regions at the north and south poles (cold traps) of the planet, where the temperature is not sufficient to provoke jumping
-
-This simulation is primarily based on the '93 paper by Bryan J. Butler and Duane O. Muhleman called "Mercury: Full-Disk Radar Images and the Detection and Stability of Ice at the North Pole". Their work on this particular topic can be seen in their paper under the heading "Migration". I also incorporated some work from the follow-up '97 paper by Butler, "“The migration of volatiles on the surfaces of Mercury and the Moon.”
-
-My model uses the sunlight and temperature components of the '93 paper, but the random angle and height-based gravity components of the '97 paper.
+Here, I was attempting to recreate the results of [a paper on WFC](https://ieeexplore.ieee.org/document/9421370), with the result I was attempting to create being a general form of the algorithm itself. I wanted to be able to fully understand and implement the logic behind WFC. At first, I used a [tutorial on what the algorithm looks like in python/pygame](https://dev.to/kavinbharathi/the-fascinating-wave-function-collapse-algorithm-4nc3), but because I've gotten so comfortable with pygame over the course of the past few months in Scientific Computing, I eventually deviated from the form of WFC shown in that article in favor of the cleaner one outlined in the paper.
 
 ### Implementation
 
-#### View
+Most of the work this project was recreating the algorithm itself, and I found that the internal logic made a lot more sense after messing around with it for a few hours. Any of the information needed to understand what exactly is happening to generate the output image can be found through the article and repository linked above. The tileset that is currently in this repository is a fairly basic one, but with a non-negligible chance for a situation to arise wherein the algorithm gets stuck. In this implementation, this triggers a full reset of the image generation, as backtracking to a "more computable" stage in the collapse is a NP-hard problem. Here are the tiles I used:
 
-Upon being run, this code creates a window with the visualization for my model, with three different colors of molecule:
+![4](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/f6528aff-d680-4a86-843e-88588d440bc8)
+![3](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/226dc7c3-9eaa-4791-bf3c-0ae487b54b7a)
+![2](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/e91f5092-5ff1-4dbc-8b76-f082733c87e6)
+![1](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/23cbcbc0-583a-4b36-9bdc-33079ca6a0aa)
+![0](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/60d835a9-64d3-4c11-9b3c-467e3182ae51)
 
-- Green molecules are active, and change size depending on how high off of the surface of the planet they are during their hop
-- Blue molecules are caught, specifically in the cold traps at the north and south poles of the planet
-- Orange molecules are lost, most commonly dissociated by the sun, but occasionally are lost because their initial launch led to their escaping the atmosphere of the planet.
+#### Control
 
-![Screenshot from 2023-10-27 02-07-21](https://github.com/olincollege/scicomp-p2-water-you-up-to/assets/95325894/a40d30fe-2aca-41fa-9d26-4eea1fb3dc2f)
-
-The yellow area on the visualization (here wrapping from one side of our flattened planet to the other) represents the current area of the planet that is facing the sun and so is enabled to hop by the temperature of the surface.
-
-#### Model
-
-As mentioned, my model uses some components of both the '93 and '97 Butler papers on this subject. However, my implementation differs from theirs in a few notable ways that were necessary in order to have the visualization that I wanted.
-
-##### Temperature and Sunlight
-
-In order to animate the paths of individual molecules, as mentioned in the '97 paper, I needed to implement the day/night cycle of the '93 paper, which meant forgoing the temperature and stability binning by latitude of the '97 paper (not NECESSARILY, but it would have made it a lot more complicated). The way I did this was by assuming that there would always be half of the planet that faced the sun, and half that did not. I was then able to incementally move an area representing this half across the surface, letting it affect the particles that it covered.
-
-##### States
-
-Each molecule is its own agent that falls into one of three categories: active, captured, and lost. On any given step of the simulation, captured and lost particles don't do anything, but active particles follow the follow (simplified) steps:
-
-1. Check if in the middle of a hop
-   1a. If true, continue the hop
-2. If not hopping & in sunlight, hop!
-3. Check if landing from a hop
-   3a. If true, check if this hop resulted in a loss
-   3aa. If true, mark as lost
-4. Check if in a polar region
-   4a. If true, mark as caught
-
-Being marked as either lost or caught removes a particle from the "active" list, making sure it doesn't move any more.
-
-##### Movement
-
-Each particle stores its location as a set of spherical coordinates, with the form (Distance from center of planet in m, Angle from north pole in deg, Azimuthal angle in deg).
-
-Crucially, this is where my model differs the most from either of Butler's. Instead of generating the distance that the particle WOULD move, I instead took the parameters for each hop and actually moved the particle, doing projectile-motion calculations for each. This made a lot more intuitive sense to me than some of the complex trigonometry used in the papers, and it enabled me to create a visualization that would show the actual position of each molecule at each timestep, including its height and general position during the jump.
-
-In order to do this, I had to make some of the decisions that Butler did. From the '93 paper, I took the idea of a constant launch velocity, because it lightened the computational load significantly. From the '97 paper, I took the idea of generating a random launch direction and angle. The direction was taken from a uniform distribution between 0 and 359 degrees, while the angle was taken from a isotropic distribution given by the ordinary Maxwellian distribution of a gas at rest. Using these and some trig, the simulation is able to generate a spherical coordinate vector that represents the initial velocity of any given jump.
-
-Using the initial coordinates, velocity, and (the gravity of mercury as) acceleration for each hop, the simulation uses calculus principles to move each particle. It's important to note here that gravity, the acceleration, changes as the particle gets further from the surface. This is taken from the '97 paper and is implemented in full here, according to physics principles.
-
-#### Controller
-
-The controller is the main file that is run. It initializes and calls both the view and model files, and when the simulation is done running, closes the view window + prints a message to the terminal about the proportion of molecules that were captured rather than lost during the run.
+To adjust the size of the image created, the tile size (resulting resoltion), or the speed of the simulation, simply adjust the global variables at the top of the file to your liking.
 
 ### Results
 
-The '97 paper found that the percentage of molecules that wound up trapped in in the polar cold traps, under the (nearest approximation of the) conditions in my model hovers at around 9%, which would suggest the presence of polar ice caps, as it's not an insignificant percentage in this case.
+**I was able to succesfully create an algorithm that non-deterministically generates a larger image, wherein the result is locally similar to an input bitmap, just like I wanted!**
 
-**_My model returns proportions between 10 and 12%_**, which is remarkably close, and is in fact VERY close to the results of the '93 paper, which derived an expected value of 12%, and found a simulated value of 10%.
+The benchmarking for this one is fairly straightforward, as it's obvious when looking by eye that the algorithm makes an image that succeeds by its own rules. Because of the nature of this project, it is difficult to run tests to see if a rule is being violated until there was a visible error. I've run this more than a couple times at this point, and it doesn't seem like anything's amiss - It follows its own internal logic, as can be proved by print statements.
 
-#### Possible Reasons for Any Discrepancy
+#### Limitations
 
-- This model abstracts away the idea that the velocities of the molecules would be distributed according to the ordinary or modified Maxwellian, and instead assumes constant initial velocity.
-- This is partly due to the temperature of sunlit surface being abstracted to a flat 500 K, which is very oversimplified, and doesn't account for gradual heating and cooling.
-- Speeding the sun up in relation to the rest of the model so significantly (40x!!!) in order to make sure the model runs in a reasonable time may affect the path of individual molecules, because they would spend much longer _at a time_ in the sun, and so hopping.
+- This model is slightly more simplistic than a classic WFC algorithm, and while I don't think it has any logic errors, it also doesn't do anything particularly unexpected.
+- I use a time.sleep() function to slow down the collapse function, which isn't as nice for this type of application as the pygame.Clock.tick() function (and sometimes makes it a little tricky to try to close the window).
 
 ### Use
 
-This model is primarily useful in understanding the paths of individual molecules on their journeys across the surface. This would be very useful in an education sense, and as a tool to aid further understanding of the system by modification of discrete factors like gravity to account for different planets, and to see how that changes our working model.
+The use of my implementation is fairly straightforward: it looks cool! The more advanced applications of this, like to make game maps or randomly generated mazes/levels for deep learning application, are only slightly beyond what I've done here, depending on the complexity of the tileset. As it is, I could hardcode just about any 2d tileset of a reasonable size and generate many different kinds of bitmaps based on them.
 
-Particularly as more data gets collected, and as scientists want to know how the system and the individual agents inside it are affected, my code is adaptable enough to encourage playing around, although not robust enough to run anything like a gradient descent to work backwards from desired behaviors to obtain data (yet!)
+However, I currently only have the one tileset coded in, and as it is, the primary function is mainly to show off the algorithm itself.
 
-The computational load (what with the visualization and projectile motion) mean that this model shouldn't be used for any heavy-duty computations - I don't have a ton of trust in how many particles it could realistically render at 60 FPS, and if the framerate were to dip, it would affect the behavior of the particles and possibly skew the results.
+### In the Future
+
+Some of the things I am the most excited about using WFC for are stretch goals for if I come back to this (which I hope to!), such as
+- Reading an input bitmap rather than hardcoding one
+- Having a tileset with symmetry and a function that can interpret that, rather than manually rotating the tiles and inputting them as different images
+- Making my own tilesets! I would like to get this to work on a wallpaper like the one below, and I think it would go even better if I could get the symmetry part solved first
+
+![image](https://github.com/olincollege/scicomp-p3-omg-wfc/assets/95325894/8da8dab3-d2dc-46b3-a184-b5264fc93c8c)
+- Being able to export the result straight to PNG rather than taking a screenshot
+- UI for changing the speed (or possibly even tilesets?? Like [this project](https://amarcolina.github.io/WFC-Explorer/?pattern=H4sIAAAAAAAAA2NgwAUYGxhxyhGSxC03KkmxJABofUQNswEAAA==), which is a little opaque tbh)
+- A more accessible UI in general, maybe with user interaction, specifically with fixing certain tiles in place (There are [several](https://oskarstalberg.com/game/wave/wave.html) [examples](https://bolddunkley.itch.io/wfc-mixed) online of WFC that are done super well in this regard).
+- I feel like I should at least MENTION that this can make the leap to the third dimension (because it's unbelievably cool!), even though I don't plan on doing that anytime soon
