@@ -4,6 +4,9 @@ import time
 
 
 class Cell:
+    """One of the cells that compose the main grid
+    """
+
     def __init__(self, x, y, tile_size, options):
         self.x = x
         self.y = y
@@ -12,23 +15,38 @@ class Cell:
         self.collapsed = False
 
     def entropy(self):
+        """
+        The entropy of this cell = number of possible positions in the superposition
+
+        Returns:
+            int: entropy
+        """
         return len(self.options)
 
     def observe(self):
-        try:
-            self.options = [random.choice(self.options)]
-            self.collapsed = True
-        except IndexError:
-            return
+        """Observe one cell = collapse its superposition
+        """
+        self.options = [random.choice(self.options)]
+        self.collapsed = True
 
     def draw(self, win):
+        """Blit one cell onto the screen
+
+        Args:
+            win (pygame.display): The window in which the program is being displayed
+        """
         for i in range(len(self.options)):
+            # Set the opacity of each tile so that all of the options can be
+            # displayed at once over each other, then draw
             self.options[i].img.set_alpha(255//len(self.options))
             win.blit(self.options[i].img, (self.y *
                                            self.tile_size, self.x * self.tile_size))
 
 
 class Tile:
+    """Tile (image and edge rules) that gets mapped onto cells
+    """
+
     def __init__(self, img):
         self.img = img
         self.index = -1
@@ -36,17 +54,36 @@ class Tile:
         self.up, self.right, self.down, self.left = [], [], [], []
 
     def set_rules(self, tiles):
-        for tile in tiles:
-            self.check_relationships(tile.edges, tile)
+        """
+        Turn the edge data into rules for how this tile interacts with all others.
 
-    def check_relationships(self, other_edges, other_tile):
+        Args:
+            tiles (Tile list): List of all tiles, with edge rules set but not adjacency
+            compatibility determined
+        """
+        for tile in tiles:
+            self.set_rules_one(tile)
+
+    def set_rules_one(self, other_tile):
+        """
+        Turn the edge data into rules for how this tile interacts with exactly one other
+        by checking compatibility in all four configurations (N/S, E/W, S/N, W/E)
+
+        Args:
+            other_tile (Tile)
+        """
         for i in range(4):
-            if self.edges[i] == other_edges[(i + 2) % 4]:
+            # Compare with the opposite side of the other tiles
+            if self.edges[i] == other_tile.edges[(i + 2) % 4]:
+                # And append if they match!
                 getattr(self, ["up", "right", "down", "left"]
                         [i]).append(other_tile)
 
 
 class Grid:
+    """Grid wherein the algorithm is performed
+    """
+
     def __init__(self, win, width, height, tile_size, options):
         self.win = win
         self.width = width
@@ -54,49 +91,55 @@ class Grid:
         self.tile_size = tile_size
         self.w = self.width // self.tile_size
         self.h = self.height // self.tile_size
-        self.grid = [[Cell(i, j, tile_size, options)
-                      for j in range(self.h)] for i in range(self.w)]
+        self.grid = []
         self.options = options
         self.invalid = False
         self.done = False
 
-    def reset(self):
+    def empty(self):
+        """Reset and init grid
+        """
         self.grid = [[Cell(i, j, tile_size, self.options)
                       for j in range(self.h)] for i in range(self.w)]
         self.invalid = False
-        print("reset")
 
     def heuristic_pick(self):
-        print("heuristic pick")
+        """Pick the next cell to observe
+
+        Returns:
+            Cell: The picked cell
+        """
         grid_copy = [i for row in self.grid for i in row]
         grid_copy.sort(key=lambda x: x.entropy())
-
         filtered_grid = [x for x in grid_copy if x.entropy() > 1]
+
+        # If there are no longer any cells with entropy > 1, we are done!
         if not filtered_grid:
-            print("done")
-            print(self.grid[3][0].options[0].edges)
             self.done = True
             return None
 
+        # If there ARE cells with entropy > 1, find the lowest and all cells with it
         lowest_entropy = filtered_grid[0].entropy()
         filtered_grid = [
             x for x in filtered_grid if x.entropy() == lowest_entropy]
 
+        # Pick one of these
         pick = random.choice(filtered_grid)
         return pick
 
     def collapse(self):
+        """The basic step for each "wave": observe and propagate
+        """
         pick = self.heuristic_pick()
         if pick:
             self.grid[pick.x][pick.y].observe()
         else:
+            # This only runs if we're already done!
             return
-        print(pick.x)
-        print(pick.y)
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
-        time.sleep(.01)
+        time.sleep(.001)
         self.grid[i][j].draw(self.win)
         pygame.display.flip()
         pre_options = self.grid[i][j].options
@@ -110,7 +153,9 @@ class Grid:
 
         def check_neighbor_cell(cell, direction):
             neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
-            valid_options = getattr(neighbor.options[0], direction, [])
+            valid_options = []
+            for option in neighbor.options:
+                valid_options.extend(getattr(option, direction))
             return [option for option in cumulative_valid_options if option in valid_options]
 
         cumulative_valid_options = check_neighbor_cell((i - 1, j), "down")
@@ -172,12 +217,11 @@ def main():
         tile.set_rules(options)
 
     wave = Grid(display, width, height, tile_size, options)
-    display.fill((0, 0, 0))
+    wave.empty()
 
     loop = True
     while loop:
 
-        display.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 loop = False
@@ -189,8 +233,7 @@ def main():
         if not wave.done:
             wave.collapse()
         if wave.invalid:
-            wave.reset()
-        pygame.display.flip()
+            wave.empty()
 
 
 if __name__ == "__main__":
