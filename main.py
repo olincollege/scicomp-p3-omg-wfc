@@ -1,8 +1,6 @@
 import random
 import pygame
-import copy
-
-num_total_options = 5
+import time
 
 
 class Cell:
@@ -24,11 +22,10 @@ class Cell:
             return
 
     def draw(self, win):
-        if len(self.options) != num_total_options:
-            for i in range(len(self.options)):
-                self.options[i].img.set_alpha(255//len(self.options))
-                win.blit(self.options[i].img, (self.y *
-                                               self.tile_size, self.x * self.tile_size))
+        for i in range(len(self.options)):
+            self.options[i].img.set_alpha(255//len(self.options))
+            win.blit(self.options[i].img, (self.y *
+                                           self.tile_size, self.x * self.tile_size))
 
 
 class Tile:
@@ -61,11 +58,13 @@ class Grid:
                       for j in range(self.h)] for i in range(self.w)]
         self.options = options
         self.invalid = False
+        self.done = False
 
     def reset(self):
         self.grid = [[Cell(i, j, tile_size, self.options)
                       for j in range(self.h)] for i in range(self.w)]
         self.invalid = False
+        print("reset")
 
     def heuristic_pick(self):
         grid_copy = [i for row in self.grid for i in row]
@@ -73,6 +72,9 @@ class Grid:
 
         filtered_grid = [x for x in grid_copy if x.entropy() > 1]
         if not filtered_grid:
+            print("done")
+            print(self.grid[3][0].options[0].edges)
+            self.done = True
             return None
 
         lowest_entropy = filtered_grid[0].entropy()
@@ -88,10 +90,14 @@ class Grid:
             self.grid[pick.x][pick.y].observe()
         else:
             return
-
+        print(pick.x)
+        print(pick.y)
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
+        time.sleep(1)
+        print("next")
+        self.grid[i][j].draw(self.win)
         pre_options = self.grid[i][j].options
         cumulative_valid_options = pre_options
 
@@ -116,7 +122,6 @@ class Grid:
             if len(cumulative_valid_options) == 1:
                 self.grid[i][j].collapsed = True
             if pre_options != cumulative_valid_options:
-                self.grid[i][j].draw(self.win)
                 self.propagate_neighbor((i - 1, j))
                 self.propagate_neighbor((i, j + 1))
                 self.propagate_neighbor((i + 1, j))
@@ -171,6 +176,7 @@ def main():
     loop = True
     while loop:
 
+        display.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 loop = False
@@ -178,7 +184,9 @@ def main():
                 if event.key == pygame.K_q:
                     loop = False
 
-        wave.collapse()
+        wave.draw(display)
+        if not wave.done:
+            wave.collapse()
         if wave.invalid:
             wave.reset()
         pygame.display.flip()
