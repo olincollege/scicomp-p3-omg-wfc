@@ -16,9 +16,8 @@ class Cell:
         self.collapsed = False
 
     def draw(self, win):
-        for i in range(len(self.options)):
-            self.options[i].img.set_alpha(255//len(self.options))
-            win.blit(self.options[i].img, (self.y *
+        if len(self.options) == 1:
+            win.blit(self.options[0].img, (self.y *
                                            self.rez, self.x * self.rez))
 
     # return the entropy/the length of options
