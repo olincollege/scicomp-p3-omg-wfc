@@ -1,21 +1,17 @@
-import copy
 import random
 import pygame
+import copy
 
-pygame.init()
+num_total_options = 5
 
 
 class Cell:
-    def __init__(self, x, y, rez, options):
+    def __init__(self, x, y, tile_size, options):
         self.x = x
         self.y = y
-        self.rez = rez
+        self.tile_size = tile_size
         self.options = options
         self.collapsed = False
-
-    def draw(self, win):
-        if len(self.options) == 1:
-            self.options[0].draw(win, self.y * self.rez, self.x * self.rez)
 
     def entropy(self):
         return len(self.options)
@@ -30,6 +26,13 @@ class Cell:
         except IndexError:
             return
 
+    def draw(self, win):
+        if len(self.options) != num_total_options:
+            for i in range(len(self.options)):
+                self.options[i].img.set_alpha(255//len(self.options))
+                win.blit(self.options[i].img, (self.y *
+                                               self.tile_size, self.x * self.tile_size))
+
 
 class Tile:
     def __init__(self, img):
@@ -38,14 +41,11 @@ class Tile:
         self.edges = []
         self.up, self.right, self.down, self.left = [], [], [], []
 
-    def draw(self, win, x, y):
-        win.blit(self.img, (x, y))
-
     def set_rules(self, tiles):
         for tile in tiles:
-            self.check_edge(tile.edges, tile)
+            self.check_relationships(tile.edges, tile)
 
-    def check_edge(self, other_edges, other_tile):
+    def check_relationships(self, other_edges, other_tile):
         for i in range(4):
             if self.edges[i] == other_edges[(i + 2) % 4]:
                 getattr(self, ["up", "right", "down", "left"]
@@ -53,23 +53,16 @@ class Tile:
 
 
 class Grid:
-    def __init__(self, width, height, rez, options):
+    def __init__(self, width, height, tile_size, options):
         self.width = width
         self.height = height
-        self.rez = rez
-        self.w = self.width // self.rez
-        self.h = self.height // self.rez
-        self.grid = [[Cell(i, j, rez, options)
+        self.tile_size = tile_size
+        self.w = self.width // self.tile_size
+        self.h = self.height // self.tile_size
+        self.grid = [[Cell(i, j, tile_size, options)
                       for j in range(self.h)] for i in range(self.w)]
         self.options = options
-
-    def draw(self, win):
-        for row in self.grid:
-            for cell in row:
-                cell.draw(win)
-
-    def initiate(self):
-        pass  # You might want to add implementation here if needed
+        self.invalid = False
 
     def heuristic_pick(self):
         grid_copy = [i for row in self.grid for i in row]
@@ -79,12 +72,17 @@ class Grid:
         if not filtered_grid:
             return None
 
-        initial = filtered_grid[0]
+        lowest_entropy = filtered_grid[0].entropy()
         filtered_grid = [
-            x for x in filtered_grid if x.entropy() == initial.entropy()]
+            x for x in filtered_grid if x.entropy() == lowest_entropy]
 
         pick = random.choice(filtered_grid)
         return pick
+
+    # def check_validity(self):
+    #     grid_copy = [i for row in self.grid for i in row]
+    #     for cell in grid_copy:
+    #         if cell.entropy() < 1 and cell
 
     def collapse(self):
         pick = self.heuristic_pick()
@@ -93,7 +91,7 @@ class Grid:
         else:
             return
 
-        next_grid = copy.deepcopy(self.grid)
+        next_grid = copy.copy(self.grid)
 
         for i in range(len(self.grid)):
             for j in range(len(self.grid[0])):
@@ -102,15 +100,19 @@ class Grid:
                 else:
                     self.compute_cumulative_valid_options(next_grid, i, j)
 
-        self.grid = copy.deepcopy(next_grid)
+        self.grid = copy.copy(next_grid)
 
     def compute_cumulative_valid_options(self, next_grid, i, j):
         cumulative_valid_options = self.options
 
         def check_neighbor_cell(cell, direction):
             neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
-            valid_options = getattr(neighbor.options[0], direction, [])
-            return [option for option in cumulative_valid_options if option in valid_options]
+            if len(neighbor.options) > 0:
+                valid_options = getattr(neighbor.options[0], direction, [])
+                return [option for option in cumulative_valid_options if option in valid_options]
+            else:
+                self.invalid = True
+                return
 
         cumulative_valid_options = check_neighbor_cell((i - 1, j), "down")
         cumulative_valid_options = check_neighbor_cell((i, j + 1), "left")
@@ -120,31 +122,43 @@ class Grid:
         next_grid[i][j].options = cumulative_valid_options
         next_grid[i][j].update()
 
+    def draw(self, win):
+        for row in self.grid:
+            for cell in row:
+                cell.draw(win)
+
+
+pygame.init()
 
 # Global variables
 width = 600
 height = 600
-rez = 30
+tile_size = 30
 display = pygame.display.set_mode((width, height))
 
-hover_toggle = False  # Add missing variable initialization
 
-
-def load_image(path, rez_, padding=0):
+def load_image(path, tile_size_, padding=0):
     img = pygame.image.load(path).convert_alpha()
-    img = pygame.transform.scale(img, (rez_ - padding, rez_ - padding))
+    img = pygame.transform.scale(
+        img, (tile_size_ - padding, tile_size_ - padding))
     return img
 
 
 def main():
-    options = [Tile(load_image(f"./imgs/{i}.png", rez)) for i in range(5)]
+    options = [
+        Tile(load_image(f"./imgs/{i}.png", tile_size)) for i in range(5)]
+
+    options[0].edges = [0, 0, 0, 0]
+    options[1].edges = [1, 1, 0, 1]
+    options[2].edges = [1, 1, 1, 0]
+    options[3].edges = [0, 1, 1, 1]
+    options[4].edges = [1, 0, 1, 1]
 
     for i, tile in enumerate(options):
         tile.index = i
         tile.set_rules(options)
 
-    wave = Grid(width, height, rez, options)
-    wave.initiate()
+    wave = Grid(width, height, tile_size, options)
 
     loop = True
     while loop:
@@ -154,8 +168,6 @@ def main():
             if event.type == pygame.QUIT:
                 loop = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_d:
-                    hover_toggle = not hover_toggle
                 if event.key == pygame.K_q:
                     loop = False
 
