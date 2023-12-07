@@ -2,6 +2,15 @@ import random
 import pygame
 import time
 
+pygame.init()
+
+# Global variables
+width = 600
+height = 600
+tile_size = 30
+speed = 1  # Pretty arbitrary multiplier
+display = pygame.display.set_mode((width, height))
+
 
 class Cell:
     """One of the cells that compose the main grid
@@ -152,7 +161,7 @@ class Grid:
             i (int): column of cell being collapsed
             j (int): row of cell being collapsed
         """
-        time.sleep(.001)
+        time.sleep(.001/speed)
 
         # Keeping track of the number of options before checking edges
         pre_options = self.grid[i][j].options
@@ -224,15 +233,6 @@ class Grid:
         neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
         if not neighbor.collapsed:
             self.propagate(cell[0] % self.w, cell[1] % self.h)
-
-
-pygame.init()
-
-# Global variables
-width = 600
-height = 600
-tile_size = 30
-display = pygame.display.set_mode((width, height))
 
 
 def load_image(path, tile_size_, padding=0):
