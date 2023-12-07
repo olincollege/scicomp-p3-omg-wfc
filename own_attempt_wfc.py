@@ -112,10 +112,17 @@ class Grid:
         grid_copy = [i for row in self.grid for i in row]
         grid_copy.sort(key=lambda x: x.entropy())
         filtered_grid = [x for x in grid_copy if x.entropy() > 1]
+        zeroes_grid = [x for x in grid_copy if x.entropy() ==
+                       0 and x.collapsed == False]
 
         # If there are no longer any cells with entropy > 1, we are done!
         if not filtered_grid:
             self.done = True
+            # print([[x.entropy(), x.x, x.y] for x in filtered_grid])
+            return None
+
+        if zeroes_grid:
+            self.invalid = True
             return None
 
         # If there ARE cells with entropy > 1, find the lowest and all cells with it
@@ -134,14 +141,12 @@ class Grid:
         if pick:
             self.grid[pick.x][pick.y].observe()
         else:
-            # This only runs if we're already done!
+            # This only runs if we're done OR resetting
             return
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
-        time.sleep(.001)
-        self.grid[i][j].draw(self.win)
-        pygame.display.flip()
+        # time.sleep(.001)
         pre_options = self.grid[i][j].options
         cumulative_valid_options = pre_options
 
@@ -165,6 +170,8 @@ class Grid:
 
         if cumulative_valid_options:
             self.grid[i][j].options = cumulative_valid_options
+            self.grid[i][j].draw(self.win)
+            pygame.display.flip()
             if len(cumulative_valid_options) == 1:
                 self.grid[i][j].collapsed = True
             if pre_options != cumulative_valid_options:
