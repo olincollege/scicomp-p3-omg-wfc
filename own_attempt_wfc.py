@@ -146,51 +146,84 @@ class Grid:
         self.propagate(pick.x, pick.y)
 
     def propagate(self, i, j):
-        # time.sleep(.001)
+        """Propagate the changes and elimination of options throughout the grid
+
+        Args:
+            i (int): column of cell being collapsed
+            j (int): row of cell being collapsed
+        """
+        time.sleep(.001)
+
+        # Keeping track of the number of options before checking edges
         pre_options = self.grid[i][j].options
         cumulative_valid_options = pre_options
 
+        # This only runs if the propagated cell is one that got observed:
+        # It's already collapsed
         if len(pre_options) == 1:
             self.propagate_neighbor((i - 1, j))
             self.propagate_neighbor((i, j + 1))
             self.propagate_neighbor((i + 1, j))
             self.propagate_neighbor((i, j - 1))
 
+        # Helper function - unsure if I'm valid for nesting functions like this
+        # But imo it would look much uglier anywhere else
         def check_neighbor_cell(cell, direction):
+            """
+            Compares the propagated cell to one of its neighbors and reduces
+            options accordingly
+
+            Args:
+                cell (tuple): the x and y location of the neighbor
+                direction (string): the direction from neighbor to addressed cell
+
+            Returns:
+                list: cumulative valid options
+            """
             neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
             valid_options = []
             for option in neighbor.options:
                 valid_options.extend(getattr(option, direction))
+            # Compare to current list and find overlap
             return [option for option in cumulative_valid_options if option in valid_options]
 
+        # Check all four directions
         cumulative_valid_options = check_neighbor_cell((i - 1, j), "down")
         cumulative_valid_options = check_neighbor_cell((i, j + 1), "left")
         cumulative_valid_options = check_neighbor_cell((i + 1, j), "up")
         cumulative_valid_options = check_neighbor_cell((i, j - 1), "right")
 
         if cumulative_valid_options:
+            # Update options and draw
             self.grid[i][j].options = cumulative_valid_options
             self.grid[i][j].draw(self.win)
             pygame.display.flip()
+
+            # Mark as collapsed if it has been
             if len(cumulative_valid_options) == 1:
                 self.grid[i][j].collapsed = True
+
+            # If there was any change, check all neighbors
             if pre_options != cumulative_valid_options:
                 self.propagate_neighbor((i - 1, j))
                 self.propagate_neighbor((i, j + 1))
                 self.propagate_neighbor((i + 1, j))
                 self.propagate_neighbor((i, j - 1))
         else:
+            # There are no valid options - reset
             self.invalid = True
 
     def propagate_neighbor(self, cell):
+        """
+        Make sure no extra computation happens - only propagate
+        cells that aren't already collapsed
+
+        Args:
+            cell (tuple): x and y location of relevant cell
+        """
         neighbor = self.grid[cell[0] % self.w][cell[1] % self.h]
         if not neighbor.collapsed:
             self.propagate(cell[0] % self.w, cell[1] % self.h)
-
-    def draw(self, win):
-        for row in self.grid:
-            for cell in row:
-                cell.draw(win)
 
 
 pygame.init()
@@ -228,7 +261,6 @@ def main():
 
     loop = True
     while loop:
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 loop = False
@@ -236,11 +268,13 @@ def main():
                 if event.key == pygame.K_q:
                     loop = False
 
-        wave.draw(display)
+        # Main loop of algorithm: check if done or invalid,
+        # If not then collapse
         if not wave.done:
             wave.collapse()
         if wave.invalid:
             wave.empty()
+            display.fill((0, 0, 0))
 
 
 if __name__ == "__main__":
