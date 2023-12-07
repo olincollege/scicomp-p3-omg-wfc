@@ -2,6 +2,7 @@ import copy
 import random
 import pygame
 import random
+import time
 
 pygame.init()
 
@@ -176,11 +177,17 @@ class Grid:
                         option for option in cumulative_valid_options if option in valid_options]
 
                     # finally assign the cumulative_valid_options options to be the current cells valid options
+                    if len(cumulative_valid_options) == 0:
+                        self.reset()
                     next_grid[i][j].options = cumulative_valid_options
                     next_grid[i][j].update()
 
         # re-assign the grid value after cell evaluation
         self.grid = copy.copy(next_grid)
+
+    def reset(self):
+        self.grid = []
+        self.initiate()
 
 
 # global variables
@@ -223,7 +230,7 @@ def main():
     # game loop
     loop = True
     while loop:
-
+        time.sleep(.05)
         display.fill((0, 0, 0))
         # event handler
         for event in pygame.event.get():
